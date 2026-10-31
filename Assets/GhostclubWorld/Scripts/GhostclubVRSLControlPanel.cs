@@ -66,6 +66,7 @@ namespace Ghostclub
             bool nPressed = false;
             bool vPressed = false;
             bool bPressed = false;
+            bool xPressed = false;
 
 #if ENABLE_INPUT_SYSTEM
             var kb = UnityEngine.InputSystem.Keyboard.current;
@@ -77,6 +78,7 @@ namespace Ghostclub
                 if (kb.nKey.wasPressedThisFrame) nPressed = true;
                 if (kb.vKey.wasPressedThisFrame) vPressed = true;
                 if (kb.bKey.wasPressedThisFrame) bPressed = true;
+                if (kb.xKey.wasPressedThisFrame) xPressed = true;
             }
             var pad = UnityEngine.InputSystem.Gamepad.current;
             if (pad != null && (pad.selectButton.wasPressedThisFrame || pad.dpad.up.wasPressedThisFrame))
@@ -90,6 +92,7 @@ namespace Ghostclub
             if (!nPressed && Input.GetKeyDown(KeyCode.N)) nPressed = true;
             if (!vPressed && Input.GetKeyDown(KeyCode.V)) vPressed = true;
             if (!bPressed && Input.GetKeyDown(KeyCode.B)) bPressed = true;
+            if (!xPressed && Input.GetKeyDown(KeyCode.X)) xPressed = true;
 
             if (togglePressed)
             {
@@ -103,6 +106,7 @@ namespace Ghostclub
                 if (nPressed && wallNeonSystem != null) wallNeonSystem.neonEnabled = !wallNeonSystem.neonEnabled;
                 if (vPressed && videoMoodLighting != null) videoMoodLighting.videoMoodEnabled = !videoMoodLighting.videoMoodEnabled;
                 if (bPressed && lightingSystem != null) lightingSystem.blackoutAll = !lightingSystem.blackoutAll;
+                if (xPressed && wallNeonSystem != null) wallNeonSystem.ToggleFloatingSegments();
             }
         }
 
@@ -186,15 +190,15 @@ namespace Ghostclub
                 string mhState = (lightingSystem != null && lightingSystem.movingHeadsEnabled && !lightingSystem.blackoutAll) ? "AN" : "AUS";
                 string lsState = (lightingSystem != null && lightingSystem.lasersEnabled && !lightingSystem.blackoutAll) ? "AN" : "AUS";
                 string wnState = (wallNeonSystem != null && wallNeonSystem.neonEnabled && (lightingSystem == null || !lightingSystem.blackoutAll)) ? "AN" : "AUS";
-                string vdState = (videoMoodLighting != null && videoMoodLighting.videoMoodEnabled && (lightingSystem == null || !lightingSystem.blackoutAll)) ? "AN" : "AUS";
-                GUI.Label(new Rect(20, Screen.height - 35, 960, 25), $"[TAB]/[L]: PANEL | [M] Movers: {mhState} | [K] Laser: {lsState} | [N] Wandlicht: {wnState} | [V] Video-Licht: {vdState} | [B] Blackout | VTRxxx Prototype");
+                string fxState = (wallNeonSystem != null && wallNeonSystem.floatingSegmentsActive) ? "AN" : "AUS";
+                GUI.Label(new Rect(20, Screen.height - 35, 1020, 25), $"[TAB]/[L]: PANEL | [M] Movers: {mhState} | [K] Laser: {lsState} | [N] Wandlicht: {wnState} | [X] Neon-Float FX: {fxState} | [B] Blackout");
                 GUI.color = Color.white;
                 return;
             }
 
             InitStyles();
 
-            float width = 680;
+            float width = 720;
             float height = 580;
             float x = (Screen.width - width) / 2f;
             float y = (Screen.height - height) / 2f;
@@ -209,6 +213,7 @@ namespace Ghostclub
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("LICHT, MOVERS & LASER", selectedTab == 0 ? _tabActiveStyle : _tabStyle, GUILayout.Height(30))) selectedTab = 0;
             if (GUILayout.Button("WAND-LICHTER", selectedTab == 1 ? _tabActiveStyle : _tabStyle, GUILayout.Height(30))) selectedTab = 1;
+            if (GUILayout.Button("SPECIAL EFFECTS", selectedTab == 4 ? _tabActiveStyle : _tabStyle, GUILayout.Height(30))) selectedTab = 4;
             if (GUILayout.Button("NEBEL & SMOKE", selectedTab == 2 ? _tabActiveStyle : _tabStyle, GUILayout.Height(30))) selectedTab = 2;
             if (GUILayout.Button("VIDEOWALL PLAYER", selectedTab == 3 ? _tabActiveStyle : _tabStyle, GUILayout.Height(30))) selectedTab = 3;
             GUILayout.EndHorizontal();
@@ -221,12 +226,13 @@ namespace Ghostclub
                 case 1: DrawEdgeNeonTab(); break;
                 case 2: DrawFogTab(); break;
                 case 3: DrawMediaTab(); break;
+                case 4: DrawSpecialEffectsTab(); break;
             }
 
             GUILayout.FlexibleSpace();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label("VTRxxx Prototype VRSL • 80-Avatar VRChat • Reflective Floor • Video-Mood", _labelStyle);
+            GUILayout.Label("VTRxxx Prototype VRSL • 80-Avatar VRChat • Special Effects Floating Neon Segments", _labelStyle);
             if (GUILayout.Button("SCHLIESSEN [TAB]", _btnNormalStyle, GUILayout.Width(130), GUILayout.Height(24)))
             {
                 TogglePanel();
@@ -453,6 +459,52 @@ namespace Ghostclub
             GUILayout.Label("• Linke Wand-Säulen: Tiefe Cyber-Blue (#0055FF) Röhren", _labelStyle);
             GUILayout.Label("• Rechte Wand-Säulen: Tiefe Blood-Crimson (#FF0518) Röhren", _labelStyle);
             GUILayout.Label("• Die Party-Poster hängen frei in den Beton-Wandfeldern zwischen den Säulen!", _statusStyle);
+        }
+
+        void DrawSpecialEffectsTab()
+        {
+            if (wallNeonSystem == null) wallNeonSystem = FindFirstObjectByType<GhostclubWallNeonSystem>();
+
+            GUILayout.Label("SPECIAL EFFECTS — INTERAKTIVE SHOW-EFFEKTE:", _headerStyle);
+            GUILayout.Space(12);
+
+            bool fxOn = (wallNeonSystem != null) ? wallNeonSystem.floatingSegmentsActive : false;
+
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label("✨ Wandbeleuchtung: 4-Segment Raum-Schwebung", _headerStyle);
+            GUILayout.Label("Teilt jeden der 6 vertikalen Wand-Lichtstäbe in 4 leuchtende Segmente auf (24 Segmente insgesamt).\nDiese lösen sich von den Säulen und schweben sanft & randomisiert durch den 3D-Raum des Clubs,\nrotieren frei, reagieren auf die Musik und werfen farbige Lichtkegel.", _labelStyle);
+            GUILayout.Space(10);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Effekt-Status:", _labelStyle, GUILayout.Width(130));
+            if (GUILayout.Button(fxOn ? "✔ EFFEKT AKTIV [SCHWEBEND] — STOPPEN [X]" : "▶ EFFEKT STARTEN [WANDBELEUCHTUNG TEILEN] [X]", fxOn ? _btnActiveStyle : _btnNormalStyle, GUILayout.Height(36)))
+            {
+                if (wallNeonSystem != null) wallNeonSystem.ToggleFloatingSegments();
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
+
+            if (wallNeonSystem != null)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Schwebe-Geschwindigkeit:", _labelStyle, GUILayout.Width(170));
+                float newSpeed = GUILayout.HorizontalSlider(wallNeonSystem.floatSpeed, 0.2f, 3.0f);
+                wallNeonSystem.floatSpeed = newSpeed;
+                GUILayout.Label($"{newSpeed:F1}x", _labelStyle, GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Segment Glow-Boost:", _labelStyle, GUILayout.Width(170));
+                float newGlow = GUILayout.HorizontalSlider(wallNeonSystem.segmentGlowBoost, 0.5f, 2.5f);
+                wallNeonSystem.segmentGlowBoost = newGlow;
+                GUILayout.Label($"{Mathf.RoundToInt(newGlow * 100)}%", _labelStyle, GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("Tipp: Du kannst diesen Effekt jederzeit auch mit der Taste [X] umschalten!", _statusStyle);
+            GUILayout.EndVertical();
         }
 
         void DrawFogTab()
