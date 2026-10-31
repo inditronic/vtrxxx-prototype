@@ -56,7 +56,8 @@ namespace Ghostclub.Editor
             SetMatColor(videoWallMat, Color.white);
             if (videoWallMat.HasProperty("_Smoothness")) videoWallMat.SetFloat("_Smoothness", 0.2f);
             if (videoWallMat.HasProperty("_Cull")) videoWallMat.SetFloat("_Cull", 0f);
-            SetMatEmission(videoWallMat, Color.white * 2.2f);
+            SetMatEmission(videoWallMat, Color.black);
+            videoWallMat.DisableKeyword("_EMISSION");
 
             Material moverBodyMat = CreateOrUpdateMaterialAsset($"{matDir}/Mat_MovingHead_Body.mat", urpLit);
             SetMatColor(moverBodyMat, new Color(0.14f, 0.16f, 0.20f, 1f));
@@ -101,6 +102,15 @@ namespace Ghostclub.Editor
             worldInstance.name = "Ghostclub_World_Geometry";
             worldInstance.transform.position = Vector3.zero;
             worldInstance.transform.rotation = Quaternion.identity;
+
+            // PERMANENT FIX: Remove the old monolith display & frame from FBX that caused the white glowing stripe under the video wall!
+            Transform monolithDisp = worldInstance.transform.Find("VJ_Monolith_Display");
+            if (monolithDisp != null) Object.DestroyImmediate(monolithDisp.gameObject);
+            Transform monolithFrame = worldInstance.transform.Find("VJ_Monolith_Frame");
+            if (monolithFrame != null) Object.DestroyImmediate(monolithFrame.gameObject);
+
+            // Setup High-Resolution Funktion-One Dance Stacks and DJ Monitors (replaces old low-poly boxes)
+            SetupFunktionOneModels(worldInstance, matDir);
 
             // 5. Setup World Materials & Colliders
             MeshRenderer[] renderers = worldInstance.GetComponentsInChildren<MeshRenderer>();
@@ -340,6 +350,15 @@ namespace Ghostclub.Editor
             var streamPlayer = videoWallQuad.AddComponent<GhostclubStreamPlayer>();
             streamPlayer.vjScreenRenderer = vjScreenRenderer;
 
+            // Floating Video Wall (24 irregular shards floating in 3D room, key [C] or UI button)
+            var fvw = videoWallQuad.AddComponent<GhostclubFloatingVideoWall>();
+            fvw.targetVideoWallRenderer = vjScreenRenderer;
+            fvw.floatSpeed = 1.0f;
+            fvw.spreadMultiplier = 1.0f;
+            fvw.rotationMultiplier = 0.8f;
+            fvw.audioReactivity = 1.0f;
+            fvw.glowBoost = 1.2f;
+
             // 8. Hang Individual Party Posters Flush on the Concrete Club Walls (Never Over Lights!)
             BuildClubPartyPosters(worldInstance.transform, matDir, urpLit);
 
@@ -371,6 +390,7 @@ namespace Ghostclub.Editor
             controlPanel.fogSystem = fogSystem;
             controlPanel.audioLink = audioLink;
             controlPanel.streamPlayer = streamPlayer;
+            controlPanel.floatingVideoWall = fvw;
 
             // 10. Instantiate Room-Distributed VRSL Trusses & 10 VRSL Moving Heads Across the Whole Club!
             BuildVRSLMovingHeadsAndTrusses(
@@ -402,6 +422,36 @@ namespace Ghostclub.Editor
 
                 lightSystem.djBoothLights.Add(bl);
             }
+
+            // 11b. Dedicated Stage Spotlights for Funktion-One Dance Stacks ("Funktion One soll erkennbar sein")
+            GameObject f1SpotLGo = new GameObject("Spotlight_FunktionOne_Left");
+            f1SpotLGo.transform.SetParent(lightingManagerGo.transform);
+            f1SpotLGo.transform.position = new Vector3(-3.2f, 4.2f, -3.8f);
+            f1SpotLGo.transform.LookAt(new Vector3(-4.15f, 1.9f, -6.30f));
+            Light f1SpotL = f1SpotLGo.AddComponent<Light>();
+            f1SpotL.type = LightType.Spot;
+            f1SpotL.spotAngle = 58f;
+            f1SpotL.innerSpotAngle = 32f;
+            f1SpotL.range = 12.0f;
+            f1SpotL.intensity = 7.5f;
+            f1SpotL.color = new Color(0.98f, 0.98f, 1.0f);
+            f1SpotL.shadows = LightShadows.None;
+
+            GameObject f1SpotRGo = new GameObject("Spotlight_FunktionOne_Right");
+            f1SpotRGo.transform.SetParent(lightingManagerGo.transform);
+            f1SpotRGo.transform.position = new Vector3(3.2f, 4.2f, -3.8f);
+            f1SpotRGo.transform.LookAt(new Vector3(4.15f, 1.9f, -6.30f));
+            Light f1SpotR = f1SpotRGo.AddComponent<Light>();
+            f1SpotR.type = LightType.Spot;
+            f1SpotR.spotAngle = 58f;
+            f1SpotR.innerSpotAngle = 32f;
+            f1SpotR.range = 12.0f;
+            f1SpotR.intensity = 7.5f;
+            f1SpotR.color = new Color(0.98f, 0.98f, 1.0f);
+            f1SpotR.shadows = LightShadows.None;
+
+            lightSystem.funktionOneLights.Add(f1SpotL);
+            lightSystem.funktionOneLights.Add(f1SpotR);
 
             // 12. Stage Laser Scanner Array
             GameObject laserArrayGo = new GameObject("VRSL_Stage_LaserScanner");
@@ -834,6 +884,94 @@ namespace Ghostclub.Editor
             foreach (Renderer r in root.GetComponentsInChildren<Renderer>())
             {
                 r.sharedMaterial = mat;
+            }
+        }
+
+        static void SetupFunktionOneModels(GameObject worldInstance, string matDir)
+        {
+            // 1. Remove old low-poly placeholders from FBX
+            Transform oldStackL = worldInstance.transform.Find("FunktionOne_SoundStack_Left");
+            if (oldStackL != null) Object.DestroyImmediate(oldStackL.gameObject);
+            Transform oldStackR = worldInstance.transform.Find("FunktionOne_SoundStack_Right");
+            if (oldStackR != null) Object.DestroyImmediate(oldStackR.gameObject);
+            Transform oldMonL = worldInstance.transform.Find("DJ_Booth_Monitor_Left");
+            if (oldMonL != null) Object.DestroyImmediate(oldMonL.gameObject);
+            Transform oldMonR = worldInstance.transform.Find("DJ_Booth_Monitor_Right");
+            if (oldMonR != null) Object.DestroyImmediate(oldMonR.gameObject);
+
+            // 2. Load Hi-Res FBX Models & Authentic PBR Materials
+            GameObject f1StackPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/FunktionOne_SoundStack_HiRes.fbx");
+            GameObject psmMonitorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/FunktionOne_PSM318_Monitor.fbx");
+
+            Material violetMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_VioletGloss.mat");
+            Material woodMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_TourCoatWood.mat");
+            Material steelMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_SteelHardware.mat");
+            Material coneMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_SpeakerCone.mat");
+            Material aluMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_MachinedAlu.mat");
+            Material silverMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_EmblemSilver.mat");
+
+            if (f1StackPrefab != null)
+            {
+                // Left Dance Stack (Audience Left, angled 20° inward toward dancefloor)
+                GameObject stackLeft = (GameObject)PrefabUtility.InstantiatePrefab(f1StackPrefab, worldInstance.transform);
+                stackLeft.name = "FunktionOne_SoundStack_Left";
+                stackLeft.transform.position = new Vector3(-4.15f, 0.66f, -6.50f);
+                stackLeft.transform.rotation = Quaternion.AngleAxis(20f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
+
+                // Right Dance Stack (Audience Right, angled -20° inward toward dancefloor)
+                GameObject stackRight = (GameObject)PrefabUtility.InstantiatePrefab(f1StackPrefab, worldInstance.transform);
+                stackRight.name = "FunktionOne_SoundStack_Right";
+                stackRight.transform.position = new Vector3(4.15f, 0.66f, -6.50f);
+                stackRight.transform.rotation = Quaternion.AngleAxis(-20f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
+
+                ApplyF1Materials(stackLeft, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
+                ApplyF1Materials(stackRight, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
+            }
+
+            if (psmMonitorPrefab != null)
+            {
+                // DJ Booth Monitor Left
+                GameObject monLeft = (GameObject)PrefabUtility.InstantiatePrefab(psmMonitorPrefab, worldInstance.transform);
+                monLeft.name = "DJ_Booth_Monitor_Left";
+                monLeft.transform.position = new Vector3(1.10f, 1.54f, -6.40f);
+                monLeft.transform.rotation = Quaternion.AngleAxis(150f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
+
+                // DJ Booth Monitor Right
+                GameObject monRight = (GameObject)PrefabUtility.InstantiatePrefab(psmMonitorPrefab, worldInstance.transform);
+                monRight.name = "DJ_Booth_Monitor_Right";
+                monRight.transform.position = new Vector3(-1.10f, 1.54f, -6.40f);
+                monRight.transform.rotation = Quaternion.AngleAxis(210f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
+
+                ApplyF1Materials(monLeft, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
+                ApplyF1Materials(monRight, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
+            }
+        }
+
+        static void ApplyF1Materials(
+            GameObject root,
+            Material violet,
+            Material wood,
+            Material steel,
+            Material cone,
+            Material alu,
+            Material silver)
+        {
+            if (root == null) return;
+            foreach (MeshRenderer mr in root.GetComponentsInChildren<MeshRenderer>())
+            {
+                Material[] mats = mr.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    string n = mats[i].name;
+                    if (n.Contains("Violet") && violet != null) mats[i] = violet;
+                    else if (n.Contains("TourCoat") && wood != null) mats[i] = wood;
+                    else if (n.Contains("SteelHardware") && steel != null) mats[i] = steel;
+                    else if (n.Contains("SpeakerCone") && cone != null) mats[i] = cone;
+                    else if (n.Contains("MachinedAlu") && alu != null) mats[i] = alu;
+                    else if (n.Contains("EmblemSilver") && silver != null) mats[i] = silver;
+                }
+                mr.sharedMaterials = mats;
             }
         }
     }

@@ -13,7 +13,16 @@ namespace Ghostclub
     /// </summary>
     public class GhostclubFloatingVideoWall : MonoBehaviour
     {
-        public static GhostclubFloatingVideoWall Instance { get; private set; }
+        private static GhostclubFloatingVideoWall _instance;
+        public static GhostclubFloatingVideoWall Instance
+        {
+            get
+            {
+                if (_instance == null) _instance = FindAnyObjectByType<GhostclubFloatingVideoWall>();
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         [Header("Target Videowall")]
         public Renderer targetVideoWallRenderer;
@@ -60,7 +69,8 @@ namespace Ghostclub
 
         void Awake()
         {
-            Instance = this;
+            _instance = this;
+            InitializeFloatingVideoWall();
         }
 
         void Start()
@@ -74,8 +84,12 @@ namespace Ghostclub
 
             if (targetVideoWallRenderer == null)
             {
-                var wallObj = GameObject.Find("VJ_Widescreen_Leinwand");
-                if (wallObj != null) targetVideoWallRenderer = wallObj.GetComponent<Renderer>();
+                targetVideoWallRenderer = GetComponent<Renderer>();
+                if (targetVideoWallRenderer == null)
+                {
+                    var wallObj = GameObject.Find("VJ_Widescreen_Leinwand");
+                    if (wallObj != null) targetVideoWallRenderer = wallObj.GetComponent<Renderer>();
+                }
             }
 
             if (targetVideoWallRenderer == null)
@@ -100,6 +114,7 @@ namespace Ghostclub
                 shardVideoMaterial.name = "Mat_FloatingVideoShard_Live";
                 shardVideoMaterial.SetColor("_BaseColor", Color.white);
                 shardVideoMaterial.SetColor("_Color", Color.white);
+                shardVideoMaterial.SetFloat("_Cull", 0f); // Double-sided so visible while tumbling in 3D
                 shardVideoMaterial.EnableKeyword("_EMISSION");
                 shardVideoMaterial.SetColor("_EmissionColor", Color.white * 2.5f);
             }
@@ -202,6 +217,12 @@ namespace Ghostclub
                         CreateSingleShard(new Vector2[] { bl, br, tr, tl }, $"VideoShard_{shardIndex++:D2}_Quad", wallTransform, wallScale);
                     }
                 }
+            }
+
+            // Initially keep shards hidden while wall is docked
+            for (int k = 0; k < _shards.Count; k++)
+            {
+                if (_shards[k].renderer != null) _shards[k].renderer.enabled = false;
             }
 
             Debug.Log($"[FloatingVideoWall] Built {_shards.Count} irregular 3D shards.");
@@ -541,12 +562,19 @@ namespace Ghostclub
 
         public void ToggleFloating()
         {
+            if (!_isInitialized) InitializeFloatingVideoWall();
             SetFloating(!floatingActive);
         }
 
         public void SetFloating(bool active)
         {
+            if (!_isInitialized) InitializeFloatingVideoWall();
             floatingActive = active;
+            Debug.Log($"[FloatingVideoWall] SetFloating: {active}");
+            if (floatingActive)
+            {
+                OnFloatingActivated();
+            }
         }
 
         void OnDestroy()

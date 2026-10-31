@@ -48,6 +48,7 @@ namespace Ghostclub
         public List<GhostclubMovingHead> movingHeads = new List<GhostclubMovingHead>();
         public List<Light> strobeLights = new List<Light>();
         public List<Light> djBoothLights = new List<Light>();
+        public List<Light> funktionOneLights = new List<Light>();
         public GhostclubLaserScanner stageLaserScanner;
 
         public enum ShowRoutine
@@ -199,6 +200,16 @@ namespace Ghostclub
                 if (djBoothLights[k] != null)
                 {
                     djBoothLights[k].intensity = boothTargetInt;
+                }
+            }
+
+            // 4. Dedicated Stage Spotlights for Funktion-One Dance Stacks (7.5f target intensity)
+            float f1TargetInt = anyStageLightOn ? (7.5f * masterDimmer * (audioReactive ? Mathf.Clamp(0.85f + energy * 0.3f, 0.6f, 1.15f) : 1.0f)) : 0f;
+            for (int k = 0; k < funktionOneLights.Count; k++)
+            {
+                if (funktionOneLights[k] != null)
+                {
+                    funktionOneLights[k].intensity = f1TargetInt;
                 }
             }
         }

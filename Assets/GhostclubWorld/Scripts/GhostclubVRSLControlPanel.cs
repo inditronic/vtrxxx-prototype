@@ -103,6 +103,14 @@ namespace Ghostclub
                 TogglePanel();
             }
 
+            // Special Effects shortcuts (work both when panel is open and when walking around!)
+            if (xPressed && wallNeonSystem != null) wallNeonSystem.ToggleFloatingSegments();
+            if (cPressed)
+            {
+                if (floatingVideoWall == null) floatingVideoWall = FindFirstObjectByType<GhostclubFloatingVideoWall>();
+                if (floatingVideoWall != null) floatingVideoWall.ToggleFloating();
+            }
+
             if (!isOpen)
             {
                 if (mPressed && lightingSystem != null) lightingSystem.movingHeadsEnabled = !lightingSystem.movingHeadsEnabled;
@@ -110,12 +118,6 @@ namespace Ghostclub
                 if (nPressed && wallNeonSystem != null) wallNeonSystem.neonEnabled = !wallNeonSystem.neonEnabled;
                 if (vPressed && videoMoodLighting != null) videoMoodLighting.videoMoodEnabled = !videoMoodLighting.videoMoodEnabled;
                 if (bPressed && lightingSystem != null) lightingSystem.blackoutAll = !lightingSystem.blackoutAll;
-                if (xPressed && wallNeonSystem != null) wallNeonSystem.ToggleFloatingSegments();
-                if (cPressed)
-                {
-                    if (floatingVideoWall == null) floatingVideoWall = FindFirstObjectByType<GhostclubFloatingVideoWall>();
-                    if (floatingVideoWall != null) floatingVideoWall.ToggleFloating();
-                }
             }
         }
 
@@ -200,7 +202,8 @@ namespace Ghostclub
                 string lsState = (lightingSystem != null && lightingSystem.lasersEnabled && !lightingSystem.blackoutAll) ? "AN" : "AUS";
                 string wnState = (wallNeonSystem != null && wallNeonSystem.neonEnabled && (lightingSystem == null || !lightingSystem.blackoutAll)) ? "AN" : "AUS";
                 string fxState = (wallNeonSystem != null && wallNeonSystem.floatingSegmentsActive) ? "AN" : "AUS";
-                GUI.Label(new Rect(20, Screen.height - 35, 1020, 25), $"[TAB]/[L]: PANEL | [M] Movers: {mhState} | [K] Laser: {lsState} | [N] Wandlicht: {wnState} | [X] Neon-Float FX: {fxState} | [B] Blackout");
+                string vwState = (floatingVideoWall != null && floatingVideoWall.floatingActive) ? "AN" : "AUS";
+                GUI.Label(new Rect(20, Screen.height - 35, 1200, 25), $"[TAB]/[L]: PANEL | [M] Movers: {mhState} | [K] Laser: {lsState} | [N] Wand: {wnState} | [X] Neon-Float: {fxState} | [C] Video-Float: {vwState} | [B] Blackout");
                 GUI.color = Color.white;
                 return;
             }
