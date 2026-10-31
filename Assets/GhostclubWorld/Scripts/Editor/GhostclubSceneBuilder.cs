@@ -78,12 +78,14 @@ namespace Ghostclub.Editor
             Material cdjScreenMatAsset = CreateOrUpdateMaterialAsset($"{matDir}/Mat_CDJ3000_Screen.mat", urpLit);
             SetMatColor(cdjScreenMatAsset, Color.white);
             SetMatTexture(cdjScreenMatAsset, cdjScreenTex);
-            SetMatEmission(cdjScreenMatAsset, Color.white * 1.4f, cdjScreenTex);
+            DisableMatEmission(cdjScreenMatAsset);
+            if (cdjScreenMatAsset.HasProperty("_Smoothness")) cdjScreenMatAsset.SetFloat("_Smoothness", 0.85f);
 
             Material djmFaceMatAsset = CreateOrUpdateMaterialAsset($"{matDir}/Mat_DJMA9_Faceplate.mat", urpLit);
             SetMatColor(djmFaceMatAsset, Color.white);
             SetMatTexture(djmFaceMatAsset, djmFaceplateTex);
-            SetMatEmission(djmFaceMatAsset, Color.white * 1.25f, djmFaceplateTex);
+            DisableMatEmission(djmFaceMatAsset);
+            if (djmFaceMatAsset.HasProperty("_Smoothness")) djmFaceMatAsset.SetFloat("_Smoothness", 0.70f);
 
             // 3. Create Fresh Scene
             var newScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -149,6 +151,16 @@ namespace Ghostclub.Editor
                     Material mat = sharedMats[m];
                     if (mat == null) continue;
                     string matName = mat.name.ToLower();
+
+                    if (objName.Contains("table") && (matName.Contains("slot") || m == 2))
+                    {
+                        // Remove the front glowing blue neon stripe on the DJ table by replacing it with industrial steel/chrome trim
+                        Material steelMatAsset = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_Steel_Industrial.mat");
+                        if (steelMatAsset == null) steelMatAsset = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_SteelHardware.mat");
+                        sharedMats[m] = steelMatAsset;
+                        matsUpdated = true;
+                        continue;
+                    }
 
                     if (matName.Contains("cdj_screen") || matName.Contains("laptop_screen"))
                     {
@@ -222,33 +234,36 @@ namespace Ghostclub.Editor
                         if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.88f);
                         if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0.95f);
                     }
-                    // CDJ Jog Platter & Ring
+                    // CDJ Jog Platter & Ring (Non-emissive, lit solely by stage lighting)
                     else if (matName.Contains("jogring"))
                     {
-                        SetMatColor(mat, new Color(0.06f, 0.07f, 0.09f, 1f));
-                        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.85f);
-                        if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0.88f);
-                        SetMatEmission(mat, new Color(0.0f, 0.45f, 1.0f) * 0.65f);
+                        SetMatColor(mat, new Color(0.08f, 0.09f, 0.11f, 1f));
+                        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.80f);
+                        if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0.85f);
+                        DisableMatEmission(mat);
                     }
-                    // Slot LED & Illuminated Pads
+                    // Slot LED & Illuminated Pads (Non-emissive dark acrylic)
                     else if (matName.Contains("cdj_slot_led") || matName.Contains("slot_led"))
                     {
-                        Color slotBlue = new Color(0.0f, 0.55f, 1.0f);
-                        SetMatColor(mat, slotBlue);
-                        SetMatEmission(mat, slotBlue * 1.8f);
+                        SetMatColor(mat, new Color(0.08f, 0.08f, 0.10f, 1f));
+                        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.60f);
+                        if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0.40f);
+                        DisableMatEmission(mat);
                     }
-                    // Play & Cue Buttons
+                    // Play & Cue Buttons (Non-emissive matte rubber / plastic, lit solely by stage lighting)
                     else if (matName.Contains("btn_play"))
                     {
-                        Color playGreen = new Color(0.0f, 0.90f, 0.40f);
+                        Color playGreen = new Color(0.12f, 0.45f, 0.20f);
                         SetMatColor(mat, playGreen);
-                        SetMatEmission(mat, playGreen * 1.8f);
+                        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.50f);
+                        DisableMatEmission(mat);
                     }
                     else if (matName.Contains("btn_cue"))
                     {
-                        Color cueOrange = new Color(1.0f, 0.35f, 0.05f);
+                        Color cueOrange = new Color(0.55f, 0.25f, 0.05f);
                         SetMatColor(mat, cueOrange);
-                        SetMatEmission(mat, cueOrange * 1.8f);
+                        if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.50f);
+                        DisableMatEmission(mat);
                     }
                     // Studio Monitor Kevlar Cone (Non-emissive so it never glows in the dark!)
                     else if (matName.Contains("monitor_kevlar") || matName.Contains("kevlar"))
@@ -427,26 +442,26 @@ namespace Ghostclub.Editor
             GameObject f1SpotLGo = new GameObject("Spotlight_FunktionOne_Left");
             f1SpotLGo.transform.SetParent(lightingManagerGo.transform);
             f1SpotLGo.transform.position = new Vector3(-3.2f, 4.2f, -3.8f);
-            f1SpotLGo.transform.LookAt(new Vector3(-4.15f, 1.9f, -6.30f));
+            f1SpotLGo.transform.LookAt(new Vector3(-4.15f, 1.8f, -6.30f));
             Light f1SpotL = f1SpotLGo.AddComponent<Light>();
             f1SpotL.type = LightType.Spot;
-            f1SpotL.spotAngle = 58f;
-            f1SpotL.innerSpotAngle = 32f;
+            f1SpotL.spotAngle = 54f;
+            f1SpotL.innerSpotAngle = 30f;
             f1SpotL.range = 12.0f;
-            f1SpotL.intensity = 7.5f;
+            f1SpotL.intensity = 6.5f;
             f1SpotL.color = new Color(0.98f, 0.98f, 1.0f);
             f1SpotL.shadows = LightShadows.None;
 
             GameObject f1SpotRGo = new GameObject("Spotlight_FunktionOne_Right");
             f1SpotRGo.transform.SetParent(lightingManagerGo.transform);
             f1SpotRGo.transform.position = new Vector3(3.2f, 4.2f, -3.8f);
-            f1SpotRGo.transform.LookAt(new Vector3(4.15f, 1.9f, -6.30f));
+            f1SpotRGo.transform.LookAt(new Vector3(4.15f, 1.8f, -6.30f));
             Light f1SpotR = f1SpotRGo.AddComponent<Light>();
             f1SpotR.type = LightType.Spot;
-            f1SpotR.spotAngle = 58f;
-            f1SpotR.innerSpotAngle = 32f;
+            f1SpotR.spotAngle = 54f;
+            f1SpotR.innerSpotAngle = 30f;
             f1SpotR.range = 12.0f;
-            f1SpotR.intensity = 7.5f;
+            f1SpotR.intensity = 6.5f;
             f1SpotR.color = new Color(0.98f, 0.98f, 1.0f);
             f1SpotR.shadows = LightShadows.None;
 
@@ -878,6 +893,16 @@ namespace Ghostclub.Editor
             EditorUtility.SetDirty(mat);
         }
 
+        static void DisableMatEmission(Material mat)
+        {
+            if (mat == null) return;
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            mat.DisableKeyword("_EMISSION");
+            if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", Color.black);
+            if (mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", null);
+            EditorUtility.SetDirty(mat);
+        }
+
         static void ApplyMaterialToHierarchy(GameObject root, Material mat)
         {
             if (root == null || mat == null) return;
@@ -889,7 +914,7 @@ namespace Ghostclub.Editor
 
         static void SetupFunktionOneModels(GameObject worldInstance, string matDir)
         {
-            // 1. Remove old low-poly placeholders from FBX
+            // 1. Remove old placeholders from FBX
             Transform oldStackL = worldInstance.transform.Find("FunktionOne_SoundStack_Left");
             if (oldStackL != null) Object.DestroyImmediate(oldStackL.gameObject);
             Transform oldStackR = worldInstance.transform.Find("FunktionOne_SoundStack_Right");
@@ -899,51 +924,146 @@ namespace Ghostclub.Editor
             Transform oldMonR = worldInstance.transform.Find("DJ_Booth_Monitor_Right");
             if (oldMonR != null) Object.DestroyImmediate(oldMonR.gameObject);
 
-            // 2. Load Hi-Res FBX Models & Authentic PBR Materials
-            GameObject f1StackPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/FunktionOne_SoundStack_HiRes.fbx");
+            // 2. Load Authentic Sketchfab Javier Funktion-One Res 2 Textures & PBR Materials
+            string texDir = "Assets/GhostclubWorld/Textures/FunktionOne_Res2";
+            Texture2D cabTex = AssetDatabase.LoadAssetAtPath<Texture2D>($"{texDir}/funktion_One_Material_BaseColor.png");
+            Texture2D cabNorm = AssetDatabase.LoadAssetAtPath<Texture2D>($"{texDir}/funktion_One_Material_Normal.png");
+            Texture2D hornTex = AssetDatabase.LoadAssetAtPath<Texture2D>($"{texDir}/funktion_part1_2_BaseColor.png");
+            Texture2D hornNorm = AssetDatabase.LoadAssetAtPath<Texture2D>($"{texDir}/funktion_part1_2_Normal.png");
+
+            Shader urpLit = Shader.Find("Universal Render Pipeline/Lit");
+            if (urpLit == null) urpLit = Shader.Find("Standard");
+
+            Material cabMat = CreateOrUpdateMaterialAsset($"{matDir}/M_FunktionOne_Res2_Cabinet.mat", urpLit);
+            SetMatColor(cabMat, Color.white);
+            if (cabTex != null) SetMatTexture(cabMat, cabTex);
+            if (cabNorm != null && cabMat.HasProperty("_BumpMap"))
+            {
+                cabMat.SetTexture("_BumpMap", cabNorm);
+                cabMat.EnableKeyword("_NORMALMAP");
+                cabMat.SetFloat("_BumpScale", 1.0f);
+            }
+            if (cabMat.HasProperty("_Smoothness")) cabMat.SetFloat("_Smoothness", 0.55f);
+            if (cabMat.HasProperty("_Metallic")) cabMat.SetFloat("_Metallic", 0.05f);
+            DisableMatEmission(cabMat);
+
+            Material hornMat = CreateOrUpdateMaterialAsset($"{matDir}/M_FunktionOne_Res2_Horns.mat", urpLit);
+            SetMatColor(hornMat, new Color(0.38f, 0.05f, 0.44f, 1f)); // Iconic Funktion-One Violet lacquer
+            if (hornTex != null) SetMatTexture(hornMat, hornTex);
+            if (hornNorm != null && hornMat.HasProperty("_BumpMap"))
+            {
+                hornMat.SetTexture("_BumpMap", hornNorm);
+                hornMat.EnableKeyword("_NORMALMAP");
+                hornMat.SetFloat("_BumpScale", 1.0f);
+            }
+            if (hornMat.HasProperty("_Smoothness")) hornMat.SetFloat("_Smoothness", 0.90f);
+            if (hornMat.HasProperty("_Metallic")) hornMat.SetFloat("_Metallic", 0.15f);
+            DisableMatEmission(hornMat);
+
+            Material driverMat = CreateOrUpdateMaterialAsset($"{matDir}/M_FunktionOne_Res2_Driver.mat", urpLit);
+            SetMatColor(driverMat, new Color(0.04f, 0.04f, 0.05f, 1f));
+            if (driverMat.HasProperty("_Smoothness")) driverMat.SetFloat("_Smoothness", 0.30f);
+            if (driverMat.HasProperty("_Metallic")) driverMat.SetFloat("_Metallic", 0.10f);
+            DisableMatEmission(driverMat);
+
+            Material hwMat = CreateOrUpdateMaterialAsset($"{matDir}/M_FunktionOne_Res2_Hardware.mat", urpLit);
+            SetMatColor(hwMat, new Color(0.12f, 0.13f, 0.15f, 1f));
+            if (hwMat.HasProperty("_Smoothness")) hwMat.SetFloat("_Smoothness", 0.75f);
+            if (hwMat.HasProperty("_Metallic")) hwMat.SetFloat("_Metallic", 0.90f);
+            DisableMatEmission(hwMat);
+
+            // 3. Load 3D Models
+            GameObject res2Prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/FunktionOne_Res2.fbx");
+            GameObject subBasePrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/FunktionOne_SoundStack_HiRes.fbx");
             GameObject psmMonitorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/FunktionOne_PSM318_Monitor.fbx");
 
-            Material violetMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_VioletGloss.mat");
             Material woodMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_TourCoatWood.mat");
             Material steelMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_SteelHardware.mat");
             Material coneMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_SpeakerCone.mat");
-            Material aluMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_MachinedAlu.mat");
-            Material silverMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_EmblemSilver.mat");
 
-            if (f1StackPrefab != null)
+            System.Action<GameObject, float, float> buildDanceStack = (parent, x, inwardAngle) =>
             {
-                // Left Dance Stack (Audience Left, angled 20° inward toward dancefloor)
-                GameObject stackLeft = (GameObject)PrefabUtility.InstantiatePrefab(f1StackPrefab, worldInstance.transform);
-                stackLeft.name = "FunktionOne_SoundStack_Left";
-                stackLeft.transform.position = new Vector3(-4.15f, 0.66f, -6.50f);
-                stackLeft.transform.rotation = Quaternion.AngleAxis(20f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
+                string stackName = x < 0 ? "FunktionOne_SoundStack_Left" : "FunktionOne_SoundStack_Right";
+                GameObject stackRoot = new GameObject(stackName);
+                stackRoot.transform.SetParent(parent.transform);
+                stackRoot.transform.position = new Vector3(x, 0.66f, -6.50f);
+                stackRoot.transform.rotation = Quaternion.Euler(0f, inwardAngle, 0f);
 
-                // Right Dance Stack (Audience Right, angled -20° inward toward dancefloor)
-                GameObject stackRight = (GameObject)PrefabUtility.InstantiatePrefab(f1StackPrefab, worldInstance.transform);
-                stackRight.name = "FunktionOne_SoundStack_Right";
-                stackRight.transform.position = new Vector3(4.15f, 0.66f, -6.50f);
-                stackRight.transform.rotation = Quaternion.AngleAxis(-20f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
+                // F218 Subwoofer Base
+                if (subBasePrefab != null)
+                {
+                    GameObject subObj = (GameObject)PrefabUtility.InstantiatePrefab(subBasePrefab, stackRoot.transform);
+                    subObj.name = "F218_Subwoofer_Base";
+                    subObj.transform.localPosition = Vector3.zero;
+                    subObj.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
 
-                ApplyF1Materials(stackLeft, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
-                ApplyF1Materials(stackRight, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
-            }
+                    foreach (Transform t in subObj.transform)
+                    {
+                        string n = t.name.ToLower();
+                        if (n.StartsWith("res5") || n.StartsWith("f215"))
+                        {
+                            t.gameObject.SetActive(false);
+                        }
+                        else if (n.Contains("sub") || n.Contains("divider") || n.Contains("cavity"))
+                        {
+                            MeshRenderer mr = t.GetComponent<MeshRenderer>();
+                            if (mr != null) mr.sharedMaterial = woodMat != null ? woodMat : cabMat;
+                        }
+                        else if (n.Contains("cone") || n.Contains("cap"))
+                        {
+                            MeshRenderer mr = t.GetComponent<MeshRenderer>();
+                            if (mr != null) mr.sharedMaterial = coneMat;
+                        }
+                        else if (n.Contains("bracket") || n.Contains("grille") || n.Contains("handle") || n.Contains("ring"))
+                        {
+                            MeshRenderer mr = t.GetComponent<MeshRenderer>();
+                            if (mr != null) mr.sharedMaterial = hwMat != null ? hwMat : steelMat;
+                        }
+                    }
+                }
 
+                // Authentic Sketchfab Javier Resolution 2 Top
+                if (res2Prefab != null)
+                {
+                    GameObject res2Obj = (GameObject)PrefabUtility.InstantiatePrefab(res2Prefab, stackRoot.transform);
+                    res2Obj.name = "FunktionOne_Res2_Top";
+                    res2Obj.transform.localPosition = new Vector3(0f, 0.72f, 0f);
+                    res2Obj.transform.localRotation = Quaternion.identity;
+
+                    foreach (MeshRenderer mr in res2Obj.GetComponentsInChildren<MeshRenderer>())
+                    {
+                        string n = mr.gameObject.name.ToLower();
+                        if (n.Contains("horn")) mr.sharedMaterial = hornMat;
+                        else if (n.Contains("driver")) mr.sharedMaterial = driverMat;
+                        else if (n.Contains("hardware") || n.Contains("port") || n.Contains("bracket") || n.Contains("track")) mr.sharedMaterial = hwMat;
+                        else mr.sharedMaterial = cabMat;
+                    }
+                }
+            };
+
+            buildDanceStack(worldInstance, -4.15f, 20f);
+            buildDanceStack(worldInstance, 4.15f, -20f);
+
+            // DJ Booth Monitors
             if (psmMonitorPrefab != null)
             {
-                // DJ Booth Monitor Left
                 GameObject monLeft = (GameObject)PrefabUtility.InstantiatePrefab(psmMonitorPrefab, worldInstance.transform);
                 monLeft.name = "DJ_Booth_Monitor_Left";
                 monLeft.transform.position = new Vector3(1.10f, 1.54f, -6.40f);
                 monLeft.transform.rotation = Quaternion.AngleAxis(150f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
 
-                // DJ Booth Monitor Right
                 GameObject monRight = (GameObject)PrefabUtility.InstantiatePrefab(psmMonitorPrefab, worldInstance.transform);
                 monRight.name = "DJ_Booth_Monitor_Right";
                 monRight.transform.position = new Vector3(-1.10f, 1.54f, -6.40f);
                 monRight.transform.rotation = Quaternion.AngleAxis(210f, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
 
-                ApplyF1Materials(monLeft, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
-                ApplyF1Materials(monRight, violetMat, woodMat, steelMat, coneMat, aluMat, silverMat);
+                Material violetMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_VioletGloss.mat");
+                Material coneM = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_SpeakerCone.mat");
+                Material aluMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_MachinedAlu.mat");
+                Material silverMat = AssetDatabase.LoadAssetAtPath<Material>($"{matDir}/M_FunktionOne_EmblemSilver.mat");
+
+                ApplyF1Materials(monLeft, hornMat != null ? hornMat : violetMat, cabMat != null ? cabMat : woodMat, hwMat != null ? hwMat : steelMat, coneM, aluMat, silverMat);
+                ApplyF1Materials(monRight, hornMat != null ? hornMat : violetMat, cabMat != null ? cabMat : woodMat, hwMat != null ? hwMat : steelMat, coneM, aluMat, silverMat);
             }
         }
 

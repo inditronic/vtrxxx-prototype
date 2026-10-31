@@ -62,38 +62,8 @@ namespace Ghostclub
 
         void DiscoverDjGearEmissives()
         {
+            // DJ equipment is strictly non-emissive and illuminated only by the lighting system
             _djEmissives.Clear();
-            var renderers = FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            HashSet<Material> seen = new HashSet<Material>();
-            foreach (var r in renderers)
-            {
-                string rName = r.gameObject.name.ToLower();
-                if (rName.Contains("lightstrip") || rName.Contains("leinwand") || rName.Contains("mover") || rName.Contains("poster"))
-                    continue;
-
-                foreach (var m in r.sharedMaterials)
-                {
-                    if (m == null || seen.Contains(m)) continue;
-                    string mName = m.name.ToLower();
-                    if (mName.Contains("cdj") || mName.Contains("djm") || mName.Contains("jogring") || mName.Contains("slot_led") || mName.Contains("btn_play") || mName.Contains("btn_cue"))
-                    {
-                        if (m.HasProperty("_EmissionColor"))
-                        {
-                            Color em = m.GetColor("_EmissionColor");
-                            if (em.maxColorComponent > 0.01f)
-                            {
-                                seen.Add(m);
-                                _djEmissives.Add(new DjEmissiveEntry
-                                {
-                                    mat = m,
-                                    origEmission = em,
-                                    origBase = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : Color.white
-                                });
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         void Update()
@@ -123,18 +93,7 @@ namespace Ghostclub
                 clubReflectionProbe.intensity = anyClubLightOn ? (1.35f * Mathf.Clamp01(masterDim)) : 0.25f;
             }
 
-            // Dim DJ Gear LEDs to 0 when all club lights are off so the room is 100% pitch black
-            float djScale = anyClubLightOn ? Mathf.Clamp01(masterDim) : 0f;
-            for (int i = 0; i < _djEmissives.Count; i++)
-            {
-                var entry = _djEmissives[i];
-                if (entry.mat == null) continue;
-                entry.mat.SetColor("_EmissionColor", entry.origEmission * djScale);
-                if (entry.mat.HasProperty("_BaseColor"))
-                {
-                    entry.mat.SetColor("_BaseColor", anyClubLightOn ? entry.origBase : Color.black);
-                }
-            }
+
 
             if (vjScreen != null)
             {
