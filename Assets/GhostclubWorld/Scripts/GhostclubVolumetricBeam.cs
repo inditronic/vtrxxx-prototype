@@ -151,6 +151,7 @@ namespace Ghostclub
                 if (_beamMaterial.HasProperty("_BaseColor")) _beamMaterial.SetColor("_BaseColor", c);
             }
 
+            if (_propBlock == null) _propBlock = new MaterialPropertyBlock();
             _propBlock.SetColor("_Color", c);
             _propBlock.SetColor("_BaseColor", c);
             _meshRenderer.SetPropertyBlock(_propBlock);

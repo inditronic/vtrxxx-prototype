@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Diagnostics;
+using System.Net;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Video;
@@ -11,14 +13,24 @@ namespace Ghostclub
     /// High-End Media Stream Player for Ghostclub 5.0:
     /// - Plays YouTube and Twitch video/audio streams on the 16:9 Widescreen Video Wall ("Leinwand")
     /// - Uses bundled yt-dlp with H.264/AAC MP4 format selection (18/22/avc1) + --no-playlist
-    /// - Includes automatic local MP4 cache fallback if macOS AVFoundation rejects a remote signed URL
+    /// - Includes automatic HTTP 302 redirect resolution for direct AVFoundation streaming
+    /// - Includes fast local MP4 caching with instant lookup by YouTube ID
     /// - Seamlessly hands off to GhostclubVJScreen when idle/stopped so the Video Wall is NEVER black
     /// - Routes audio into an AudioSource for 100% synchronized VRChat AudioLink reactivity
     /// </summary>
     [RequireComponent(typeof(VideoPlayer))]
     public class GhostclubStreamPlayer : MonoBehaviour
     {
-        public static GhostclubStreamPlayer Instance { get; private set; }
+        private static GhostclubStreamPlayer _instance;
+        public static GhostclubStreamPlayer Instance
+        {
+            get
+            {
+                if (_instance == null) _instance = FindAnyObjectByType<GhostclubStreamPlayer>();
+                return _instance;
+            }
+            private set => _instance = value;
+        }
 
         [Header("Target Videowall")]
         public Renderer vjScreenRenderer;
@@ -28,7 +40,7 @@ namespace Ghostclub
         public AudioSource videoAudioSource;
 
         [Header("Default Streams")]
-        public string defaultUrl = "https://www.youtube.com/watch?v=WlJ0h3nzOxo"; // 0b4k3 - GHOSTCLUB 5.0
+        public string defaultUrl = "https://www.youtube.com/watch?v=b10gQQ_pyQo"; // bed Live at The George Tavern
 
         [Header("State")]
         public bool isPlaying = false;
@@ -42,16 +54,29 @@ namespace Ghostclub
         private string _lastOriginalUrl = null;
         private bool _isResolving = false;
         private bool _triedLocalFallback = false;
+        private Coroutine _watchdogCoroutine = null;
 
         void Awake()
         {
-            Instance = this;
+            _instance = this;
             _videoPlayer = GetComponent<VideoPlayer>();
         }
 
         void Start()
         {
             SetupVideoPlayer();
+        }
+
+        void Update()
+        {
+            if (isPlaying && vjScreenRenderer != null)
+            {
+                Material mat = vjScreenRenderer.material;
+                if (mat != null && mat.mainTexture != videoRenderTexture)
+                {
+                    BindVideoTextureToWall();
+                }
+            }
         }
 
         void SetupVideoPlayer()
@@ -109,7 +134,7 @@ namespace Ghostclub
                 if (!_triedLocalFallback && !string.IsNullOrEmpty(_lastOriginalUrl))
                 {
                     _triedLocalFallback = true;
-                    UpdateStatus("Direct URL rejected by macOS AVFoundation — caching MP4 via yt-dlp...");
+                    UpdateStatus("Direct URL abgelehnt — Caching MP4 via yt-dlp...");
                     string localFile = await Task.Run(() => DownloadLocalMp4WithYtDlp(_lastOriginalUrl));
                     if (!string.IsNullOrEmpty(localFile) && File.Exists(localFile))
                     {
@@ -124,10 +149,10 @@ namespace Ghostclub
             };
         }
 
-        void BindVideoTextureToWall()
+        public void BindVideoTextureToWall()
         {
             if (vjScreenRenderer == null || videoRenderTexture == null) return;
-            Material mat = vjScreenRenderer.sharedMaterial != null ? vjScreenRenderer.sharedMaterial : vjScreenRenderer.material;
+            Material mat = vjScreenRenderer.material;
             if (mat == null) return;
 
             mat.mainTexture = videoRenderTexture;
@@ -137,7 +162,7 @@ namespace Ghostclub
             if (mat.HasProperty("_EmissionMap"))
             {
                 mat.SetTexture("_EmissionMap", videoRenderTexture);
-                mat.SetColor("_EmissionColor", Color.white * 2.0f);
+                mat.SetColor("_EmissionColor", Color.white * 2.5f);
                 mat.EnableKeyword("_EMISSION");
             }
         }
@@ -178,6 +203,20 @@ namespace Ghostclub
                 return;
             }
 
+            // Quick check: If this video was already cached locally, play instantly without resolving!
+            string videoId = ExtractVideoId(url);
+            if (!string.IsNullOrEmpty(videoId))
+            {
+                string cachedPath = CheckExistingCache(videoId);
+                if (!string.IsNullOrEmpty(cachedPath))
+                {
+                    UnityEngine.Debug.Log($"[StreamPlayer] Instant playback from local cache: {cachedPath}");
+                    UpdateStatus("Lokaler Cache gefunden — Starte Video Wall...");
+                    PlayDirectUrl("file://" + cachedPath);
+                    return;
+                }
+            }
+
             _isResolving = true;
             UpdateStatus("Löse YouTube/Twitch Stream via yt-dlp auf...");
 
@@ -186,12 +225,13 @@ namespace Ghostclub
                 string resolved = await Task.Run(() => ResolveWithYtDlp(url));
                 if (!string.IsNullOrEmpty(resolved))
                 {
+                    string effectiveUrl = await Task.Run(() => FollowRedirects(resolved));
                     UpdateStatus("Stream aufgelöst — Starte Video Wall...");
-                    PlayDirectUrl(resolved);
+                    PlayDirectUrl(effectiveUrl);
                 }
                 else
                 {
-                    UpdateStatus("Direktlink fehlgeschlagen — Lade MP4 Cache...");
+                    UpdateStatus("Direktlink fehlgeschlagen — Lade MP4 Cache herunter...");
                     _triedLocalFallback = true;
                     string localFile = await Task.Run(() => DownloadLocalMp4WithYtDlp(url));
                     if (!string.IsNullOrEmpty(localFile) && File.Exists(localFile))
@@ -220,6 +260,14 @@ namespace Ghostclub
 
         string CleanYouTubeUrl(string url)
         {
+            if (string.IsNullOrWhiteSpace(url)) return url;
+            url = url.Trim();
+            // Handle plain 11-character video ID input
+            if (url.Length == 11 && !url.Contains("/") && !url.Contains(".") && !url.Contains(" "))
+            {
+                return $"https://www.youtube.com/watch?v={url}";
+            }
+
             // Strip playlist parameters (&list=..., &index=..., &start_radio=...) so single video resolves fast
             try
             {
@@ -238,6 +286,49 @@ namespace Ghostclub
             return url;
         }
 
+        public string ExtractVideoId(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return null;
+            if (url.Length == 11 && !url.Contains("/") && !url.Contains(".") && !url.Contains(" ")) return url;
+            try
+            {
+                if (url.Contains("v="))
+                {
+                    int idx = url.IndexOf("v=") + 2;
+                    int amp = url.IndexOf('&', idx);
+                    return amp > 0 ? url.Substring(idx, amp - idx) : url.Substring(idx);
+                }
+                if (url.Contains("youtu.be/"))
+                {
+                    int idx = url.IndexOf("youtu.be/") + 9;
+                    int q = url.IndexOf('?', idx);
+                    return q > 0 ? url.Substring(idx, q - idx) : url.Substring(idx);
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        string CheckExistingCache(string videoId)
+        {
+            if (string.IsNullOrEmpty(videoId)) return null;
+            string fileName = $"ghostclub_stream_{videoId}.mp4";
+            string[] searchPaths = new string[]
+            {
+                Path.Combine(Application.temporaryCachePath, fileName),
+                Path.Combine("/tmp", fileName)
+            };
+
+            foreach (var p in searchPaths)
+            {
+                if (File.Exists(p) && new FileInfo(p).Length > 1024 * 1024)
+                {
+                    return p;
+                }
+            }
+            return null;
+        }
+
         void PlayDirectUrl(string directUrl)
         {
             _resolvedStreamUrl = directUrl;
@@ -245,6 +336,54 @@ namespace Ghostclub
             videoAudioSource.Stop();
             _videoPlayer.url = directUrl;
             _videoPlayer.Prepare();
+
+            if (_watchdogCoroutine != null) StopCoroutine(_watchdogCoroutine);
+            if (directUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                _watchdogCoroutine = StartCoroutine(PrepareWatchdogCoroutine(_lastOriginalUrl));
+            }
+        }
+
+        private IEnumerator PrepareWatchdogCoroutine(string originalUrl)
+        {
+            float elapsed = 0f;
+            while (elapsed < 8f)
+            {
+                if (_videoPlayer.isPrepared || _videoPlayer.isPlaying) yield break;
+                elapsed += 0.5f;
+                yield return new WaitForSeconds(0.5f);
+            }
+
+            if (!_videoPlayer.isPrepared && !_triedLocalFallback && !string.IsNullOrEmpty(originalUrl))
+            {
+                UnityEngine.Debug.LogWarning("[StreamPlayer] Direct stream prepare timed out — triggering local cache fallback...");
+                _triedLocalFallback = true;
+                UpdateStatus("Stream Pufferung langsam — Lade MP4 Cache herunter...");
+
+                string localFile = null;
+                bool done = false;
+                Task.Run(() => DownloadLocalMp4WithYtDlp(originalUrl)).ContinueWith(t =>
+                {
+                    localFile = t.Result;
+                    done = true;
+                });
+
+                while (!done)
+                {
+                    yield return new WaitForSeconds(0.5f);
+                }
+
+                if (!string.IsNullOrEmpty(localFile) && File.Exists(localFile))
+                {
+                    PlayDirectUrl("file://" + localFile);
+                }
+                else
+                {
+                    isPlaying = false;
+                    RestoreVJVisuals();
+                    UpdateStatus("Fehler beim Herunterladen des Streams.");
+                }
+            }
         }
 
         public void Pause()
@@ -281,6 +420,7 @@ namespace Ghostclub
 
         public void Stop()
         {
+            if (_watchdogCoroutine != null) StopCoroutine(_watchdogCoroutine);
             _videoPlayer.Stop();
             videoAudioSource.Stop();
             isPlaying = false;
@@ -293,11 +433,11 @@ namespace Ghostclub
             UpdateStatus("Gestoppt (Keine Musik — Moving Heads aus)");
         }
 
-        public void SetVolume(float volume)
+        public void SetVolume(float vol)
         {
             if (videoAudioSource != null)
             {
-                videoAudioSource.volume = Mathf.Clamp01(volume);
+                videoAudioSource.volume = Mathf.Clamp01(vol);
             }
         }
 
@@ -313,9 +453,47 @@ namespace Ghostclub
 
         string GetNodeRuntimeArg()
         {
-            if (File.Exists("/opt/homebrew/bin/node")) return "--js-runtimes node:/opt/homebrew/bin/node ";
-            if (File.Exists("/usr/local/bin/node")) return "--js-runtimes node:/usr/local/bin/node ";
+            string[] candidates = new string[]
+            {
+                "/opt/homebrew/bin/node",
+                "/usr/local/bin/node",
+                "/usr/bin/node",
+                "/opt/homebrew/bin/deno",
+                "/usr/local/bin/deno"
+            };
+            foreach (var c in candidates)
+            {
+                if (File.Exists(c))
+                {
+                    string binName = Path.GetFileName(c);
+                    return $"--js-runtimes {binName}:{c} ";
+                }
+            }
             return "";
+        }
+
+        string FollowRedirects(string initialUrl)
+        {
+            if (string.IsNullOrEmpty(initialUrl) || !initialUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                return initialUrl;
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(initialUrl);
+                request.Method = "HEAD";
+                request.AllowAutoRedirect = true;
+                request.Timeout = 8000;
+                request.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)";
+                using (var response = (HttpWebResponse)request.GetResponse())
+                {
+                    return response.ResponseUri.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning($"[StreamPlayer] FollowRedirects fallback: {ex.Message}");
+                return initialUrl;
+            }
         }
 
         string ResolveWithYtDlp(string targetUrl)
@@ -329,11 +507,12 @@ namespace Ghostclub
 
             string jsRuntimeArg = GetNodeRuntimeArg();
 
-            // Prioritize Format 18/22 (H.264 avc1 + AAC mp4a progressive MP4) which macOS AVFoundation VideoPlayer supports 100%
+            // Use -4 (force IPv4) to bypass YouTube's IPv6 bot-detection wall ("Sign in to confirm you're not a bot").
+            // Prioritize Format 18/22 (H.264 avc1 + AAC mp4a progressive MP4) which macOS AVFoundation VideoPlayer streams directly.
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = ytdlpPath,
-                Arguments = $"{jsRuntimeArg}--no-playlist --geo-bypass -f \"18/22/best[ext=mp4][vcodec^=avc1][acodec^=mp4a]/best[ext=mp4]/best\" -g \"{targetUrl}\"",
+                Arguments = $"-4 {jsRuntimeArg}--no-playlist --geo-bypass --no-cache-dir --socket-timeout 20 -f \"18/22/best[ext=mp4][vcodec^=avc1][acodec^=mp4a]/best[ext=mp4]/best\" -g \"{targetUrl}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -344,7 +523,7 @@ namespace Ghostclub
             {
                 string output = process.StandardOutput.ReadToEnd();
                 string error = process.StandardError.ReadToEnd();
-                process.WaitForExit(20000);
+                process.WaitForExit(25000);
 
                 if (!string.IsNullOrEmpty(output))
                 {
@@ -366,22 +545,42 @@ namespace Ghostclub
 
         string DownloadLocalMp4WithYtDlp(string targetUrl)
         {
+            string videoId = ExtractVideoId(targetUrl);
+            string baseFileName = !string.IsNullOrEmpty(videoId) ? $"ghostclub_stream_{videoId}.mp4" : "ghostclub_stream_cache.mp4";
+
+            string cacheDir = Application.temporaryCachePath;
+            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+
+            string[] searchPaths = new string[]
+            {
+                Path.Combine(cacheDir, baseFileName),
+                Path.Combine("/tmp", baseFileName)
+            };
+
+            foreach (var p in searchPaths)
+            {
+                if (File.Exists(p) && new FileInfo(p).Length > 1024 * 1024)
+                {
+                    UnityEngine.Debug.Log($"[StreamPlayer] Using existing cached MP4: {p}");
+                    return p;
+                }
+            }
+
             string ytdlpPath = GetYtDlpBinaryPath();
             if (ytdlpPath == null) return null;
 
             string jsRuntimeArg = GetNodeRuntimeArg();
-            string cacheDir = Application.temporaryCachePath;
-            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
-            string outFile = Path.Combine(cacheDir, "ghostclub_stream_cache.mp4");
+            string outFile = Path.Combine(cacheDir, baseFileName);
             if (File.Exists(outFile))
             {
                 try { File.Delete(outFile); } catch { }
             }
 
+            // Use -4 (force IPv4) and 120s timeout so long sets (150MB+) have enough time to finish caching locally
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = ytdlpPath,
-                Arguments = $"{jsRuntimeArg}--no-playlist --geo-bypass -f \"18/best[ext=mp4][vcodec^=avc1]/best[ext=mp4]\" --force-overwrites -o \"{outFile}\" \"{targetUrl}\"",
+                Arguments = $"-4 {jsRuntimeArg}--no-playlist --geo-bypass --no-cache-dir --socket-timeout 30 -f \"18/best[ext=mp4][vcodec^=avc1]/best[ext=mp4]\" --force-overwrites -o \"{outFile}\" \"{targetUrl}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -392,7 +591,7 @@ namespace Ghostclub
             {
                 process.StandardOutput.ReadToEnd();
                 process.StandardError.ReadToEnd();
-                process.WaitForExit(35000);
+                process.WaitForExit(120000);
             }
 
             return File.Exists(outFile) ? outFile : null;

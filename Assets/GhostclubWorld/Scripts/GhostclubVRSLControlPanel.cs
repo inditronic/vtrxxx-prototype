@@ -569,17 +569,22 @@ namespace Ghostclub
 
             GUILayout.Label("Schnell-Auswahl Presets (YouTube / Boiler Room / Club Sets):", _labelStyle);
             GUILayout.BeginHorizontal();
+            if (GUILayout.Button("bed Live (George Tavern)", _btnNormalStyle, GUILayout.Height(26)))
+            {
+                _streamUrlInput = "https://www.youtube.com/watch?v=b10gQQ_pyQo";
+                if (streamPlayer != null) streamPlayer.PlayStream(_streamUrlInput);
+            }
             if (GUILayout.Button("GHOSTCLUB 5.0 (0b4k3)", _btnNormalStyle, GUILayout.Height(26)))
             {
                 _streamUrlInput = "https://www.youtube.com/watch?v=WlJ0h3nzOxo";
                 if (streamPlayer != null) streamPlayer.PlayStream(_streamUrlInput);
             }
-            if (GUILayout.Button("Sara Landry (Hard Techno)", _btnNormalStyle, GUILayout.Height(26)))
+            if (GUILayout.Button("Sara Landry", _btnNormalStyle, GUILayout.Height(26)))
             {
                 _streamUrlInput = "https://www.youtube.com/watch?v=EIQlDpgAY5Y";
                 if (streamPlayer != null) streamPlayer.PlayStream(_streamUrlInput);
             }
-            if (GUILayout.Button("Boiler Room Rotterdam", _btnNormalStyle, GUILayout.Height(26)))
+            if (GUILayout.Button("Boiler Room", _btnNormalStyle, GUILayout.Height(26)))
             {
                 _streamUrlInput = "https://www.youtube.com/watch?v=l-VHXfda5J0";
                 if (streamPlayer != null) streamPlayer.PlayStream(_streamUrlInput);
