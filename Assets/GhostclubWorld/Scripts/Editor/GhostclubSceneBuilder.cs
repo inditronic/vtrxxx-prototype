@@ -674,8 +674,8 @@ namespace Ghostclub.Editor
                 rimLightGo.transform.localPosition = new Vector3(0f, -0.22f, 0.22f);
                 Light rimLight = rimLightGo.AddComponent<Light>();
                 rimLight.type = LightType.Point;
-                rimLight.range = 2.2f;
-                rimLight.intensity = 2.0f;
+                rimLight.range = 1.4f;
+                rimLight.intensity = 0.4f;
                 rimLight.color = beamCol;
                 rimLight.shadows = LightShadows.None;
 
@@ -686,16 +686,16 @@ namespace Ghostclub.Editor
 
                 Light spot = spotGo.AddComponent<Light>();
                 spot.type = LightType.Spot;
-                spot.spotAngle = 30f;
-                spot.innerSpotAngle = 15f;
+                spot.spotAngle = 32f;
+                spot.innerSpotAngle = 16f;
                 spot.range = 24f;
-                spot.intensity = 6.5f;
+                spot.intensity = 7.0f;
                 spot.color = beamCol;
                 spot.shadows = (i < 4) ? LightShadows.Soft : LightShadows.None;
 
                 var beam = spotGo.AddComponent<GhostclubVolumetricBeam>();
                 beam.sharedBeamMaterial = sharedBeamMat;
-                beam.beamAlphaMultiplier = 0.22f;
+                beam.beamAlphaMultiplier = 0.35f;
 
                 GhostclubMovingHead mh = moverGo.AddComponent<GhostclubMovingHead>();
                 mh.yokeTransform = yokeGo.transform;

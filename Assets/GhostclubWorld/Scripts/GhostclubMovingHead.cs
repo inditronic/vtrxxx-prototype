@@ -75,12 +75,12 @@ namespace Ghostclub
                 spotLight.intensity = _baseIntensity * effectiveDimmer;
             }
 
-            // Update Fixture Rim Light
+            // Update Fixture Rim Light (Subtle local illumination, no bloom glare)
             if (rimLight != null)
             {
                 rimLight.enabled = (effectiveDimmer > 0.005f);
                 rimLight.color = beamColor;
-                rimLight.intensity = 2.0f * effectiveDimmer;
+                rimLight.intensity = 0.4f * effectiveDimmer;
             }
 
             // Update Volumetric Beam Cone
@@ -93,11 +93,11 @@ namespace Ghostclub
                 }
             }
 
-            // Update Lens Emissive Flare (Turns dark when effectiveDimmer == 0)
+            // Update Lens Emissive Flare (Kept very subtle without bloom blowout so the beam cone is the hero!)
             if (lensRenderer != null)
             {
-                Color emissiveColor = beamColor * (effectiveDimmer * 18f);
-                Color baseCol = Color.Lerp(new Color(0.03f, 0.03f, 0.04f, 1f), beamColor, effectiveDimmer);
+                Color emissiveColor = beamColor * (effectiveDimmer * 0.85f);
+                Color baseCol = Color.Lerp(new Color(0.04f, 0.04f, 0.05f, 1f), beamColor * 0.5f, effectiveDimmer);
                 _lensPropBlock.SetColor("_EmissionColor", emissiveColor);
                 _lensPropBlock.SetColor("_BaseColor", baseCol);
                 _lensPropBlock.SetColor("_Color", baseCol);
