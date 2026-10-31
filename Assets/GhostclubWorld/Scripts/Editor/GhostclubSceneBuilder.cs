@@ -326,9 +326,9 @@ namespace Ghostclub.Editor
             GameObject videoWallQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             videoWallQuad.name = "VJ_Widescreen_Leinwand";
             videoWallQuad.transform.SetParent(worldInstance.transform);
-            videoWallQuad.transform.position = new Vector3(0f, 3.55f, -8.82f);
+            videoWallQuad.transform.position = new Vector3(0f, 4.20f, -8.82f);
             videoWallQuad.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            videoWallQuad.transform.localScale = new Vector3(7.55f, 4.18f, 1f);
+            videoWallQuad.transform.localScale = new Vector3(8.20f, 4.60f, 1f);
 
             MeshRenderer vjScreenRenderer = videoWallQuad.GetComponent<MeshRenderer>();
             vjScreenRenderer.sharedMaterial = videoWallMat;
@@ -406,7 +406,7 @@ namespace Ghostclub.Editor
             // 12. Stage Laser Scanner Array
             GameObject laserArrayGo = new GameObject("VRSL_Stage_LaserScanner");
             laserArrayGo.transform.SetParent(lightingManagerGo.transform);
-            laserArrayGo.transform.position = new Vector3(0f, 5.05f, -5.2f);
+            laserArrayGo.transform.position = new Vector3(0f, 6.20f, -5.2f);
             laserArrayGo.transform.rotation = Quaternion.Euler(14f, 0f, 0f);
 
             GhostclubLaserScanner laserScanner = laserArrayGo.AddComponent<GhostclubLaserScanner>();
@@ -532,57 +532,31 @@ namespace Ghostclub.Editor
             Material lensRedMat,
             Material sharedBeamMat)
         {
-            GameObject vrslTrussPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/VRSL/Truss - 3.003.fbx");
             GameObject vrslMoverPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/GhostclubWorld/Models/VRSL/MoverLight--RTP-SplitMesh-SingleSided-HQ.fbx");
 
-            // 1. Instantiate Detailed VRSL Cross-Trusses at Stage (Z = -5.2), Mid Dancefloor (Z = -1.6), and Front Dancefloor (Z = +1.5)
-            float[] crossZs = new float[] { -5.2f, -1.6f, 1.5f };
-            if (vrslTrussPrefab != null)
-            {
-                for (int t = 0; t < crossZs.Length; t++)
-                {
-                    GameObject crossTruss = (GameObject)PrefabUtility.InstantiatePrefab(vrslTrussPrefab, parent);
-                    crossTruss.name = $"VRSL_Cross_Truss_{t}";
-                    crossTruss.transform.position = new Vector3(4.2f, 4.75f, crossZs[t]);
-                    crossTruss.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-                    crossTruss.transform.localScale = new Vector3(1.1f, 0.9f, 0.9f);
-                    ApplyMaterialToHierarchy(crossTruss, moverBodyMat);
-                }
-
-                // Left & Right Longitudinal Dancefloor Trusses
-                for (int side = 0; side < 2; side++)
-                {
-                    float sx = (side == 0) ? -3.8f : 3.8f;
-                    GameObject sideTruss = (GameObject)PrefabUtility.InstantiatePrefab(vrslTrussPrefab, parent);
-                    sideTruss.name = $"VRSL_Longitudinal_Truss_{(side == 0 ? "Left" : "Right")}";
-                    sideTruss.transform.position = new Vector3(sx, 4.80f, 4.0f);
-                    sideTruss.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
-                    sideTruss.transform.localScale = new Vector3(1.4f, 0.9f, 0.9f);
-                    ApplyMaterialToHierarchy(sideTruss, moverBodyMat);
-                }
-            }
-
-            // 2. 10 VRSL Moving Heads Distributed Across the Entire 80-Avatar Club Room:
-            // - 4 on Stage Cross-Truss (Z = -5.2)
-            // - 3 on Mid-Club Cross-Truss (Z = -1.6)
-            // - 3 on Front Dancefloor Truss (Z = +1.5)
+            // Traversen komplett entfernt!
+            // Moving Heads sind direkt an der Decke / Seiten montiert, vollständig AUSSERHALB des Sichtfelds vor der Videoleinwand!
+            // Die Videoleinwand (Z = -8.82, X von -3.8 bis +3.8, Y von 1.5 bis 5.6) bleibt aus Dancefloor-Sicht 100% frei!
+            // - Stage-Flügel (weit links X = -4.5 und weit rechts X = +4.5): 4 Fixtures
+            // - Mid-Club Dancefloor (Z = -1.6, Seiten X = ±4.2, Center X = 0 weit vor der Stage): 3 Fixtures
+            // - Front Dancefloor (Z = +2.5, X = -3.8, 0.0, +3.8): 3 Fixtures
             Vector3[] moverPositions = new Vector3[]
             {
-                // Stage Truss (4 Fixtures)
-                new Vector3(-3.4f, 4.60f, -5.2f),
-                new Vector3(-1.2f, 4.60f, -5.2f),
-                new Vector3( 1.2f, 4.60f, -5.2f),
-                new Vector3( 3.4f, 4.60f, -5.2f),
+                // Stage Flanken (weit außen, Deckenhöhe 5.8m — 0 Verdeckung der Videoleinwand!)
+                new Vector3(-4.6f, 5.80f, -6.8f),
+                new Vector3(-4.4f, 5.80f, -4.5f),
+                new Vector3( 4.4f, 5.80f, -4.5f),
+                new Vector3( 4.6f, 5.80f, -6.8f),
 
-                // Mid-Club Dancefloor Truss (3 Fixtures)
-                new Vector3(-3.6f, 4.55f, -1.6f),
-                new Vector3( 0.0f, 4.55f, -1.6f),
-                new Vector3( 3.6f, 4.55f, -1.6f),
+                // Mid-Club Dancefloor (Deckenhöhe 5.8m)
+                new Vector3(-4.2f, 5.80f, -1.6f),
+                new Vector3( 0.0f, 5.85f, -1.6f),
+                new Vector3( 4.2f, 5.80f, -1.6f),
 
-                // Front Dancefloor Truss (3 Fixtures)
-                new Vector3(-3.2f, 4.50f,  1.5f),
-                new Vector3( 0.0f, 4.50f,  1.5f),
-                new Vector3( 3.2f, 4.50f,  1.5f)
+                // Front Dancefloor / Eingangsbereich (Deckenhöhe 5.8m)
+                new Vector3(-3.8f, 5.80f,  2.5f),
+                new Vector3( 0.0f, 5.85f,  2.5f),
+                new Vector3( 3.8f, 5.80f,  2.5f)
             };
 
             Color blueCol = new Color(0.0f, 0.50f, 1.0f);
