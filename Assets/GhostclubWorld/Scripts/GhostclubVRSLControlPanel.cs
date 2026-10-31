@@ -24,6 +24,7 @@ namespace Ghostclub
         public GhostclubLightingSystem lightingSystem;
         public GhostclubVideoMoodLighting videoMoodLighting;
         public GhostclubWallNeonSystem wallNeonSystem;
+        public GhostclubFloatingVideoWall floatingVideoWall;
         public GhostclubFogSystem fogSystem;
         public GhostclubStreamPlayer streamPlayer;
         public GhostclubAudioLink audioLink;
@@ -67,6 +68,7 @@ namespace Ghostclub
             bool vPressed = false;
             bool bPressed = false;
             bool xPressed = false;
+            bool cPressed = false;
 
 #if ENABLE_INPUT_SYSTEM
             var kb = UnityEngine.InputSystem.Keyboard.current;
@@ -79,6 +81,7 @@ namespace Ghostclub
                 if (kb.vKey.wasPressedThisFrame) vPressed = true;
                 if (kb.bKey.wasPressedThisFrame) bPressed = true;
                 if (kb.xKey.wasPressedThisFrame) xPressed = true;
+                if (kb.cKey.wasPressedThisFrame) cPressed = true;
             }
             var pad = UnityEngine.InputSystem.Gamepad.current;
             if (pad != null && (pad.selectButton.wasPressedThisFrame || pad.dpad.up.wasPressedThisFrame))
@@ -93,6 +96,7 @@ namespace Ghostclub
             if (!vPressed && Input.GetKeyDown(KeyCode.V)) vPressed = true;
             if (!bPressed && Input.GetKeyDown(KeyCode.B)) bPressed = true;
             if (!xPressed && Input.GetKeyDown(KeyCode.X)) xPressed = true;
+            if (!cPressed && Input.GetKeyDown(KeyCode.C)) cPressed = true;
 
             if (togglePressed)
             {
@@ -107,6 +111,11 @@ namespace Ghostclub
                 if (vPressed && videoMoodLighting != null) videoMoodLighting.videoMoodEnabled = !videoMoodLighting.videoMoodEnabled;
                 if (bPressed && lightingSystem != null) lightingSystem.blackoutAll = !lightingSystem.blackoutAll;
                 if (xPressed && wallNeonSystem != null) wallNeonSystem.ToggleFloatingSegments();
+                if (cPressed)
+                {
+                    if (floatingVideoWall == null) floatingVideoWall = FindFirstObjectByType<GhostclubFloatingVideoWall>();
+                    if (floatingVideoWall != null) floatingVideoWall.ToggleFloating();
+                }
             }
         }
 
@@ -504,6 +513,61 @@ namespace Ghostclub
 
             GUILayout.Space(6);
             GUILayout.Label("Tipp: Du kannst diesen Effekt jederzeit auch mit der Taste [X] umschalten!", _statusStyle);
+            GUILayout.EndVertical();
+
+            GUILayout.Space(14);
+
+            if (floatingVideoWall == null) floatingVideoWall = FindFirstObjectByType<GhostclubFloatingVideoWall>();
+            bool wallFxOn = (floatingVideoWall != null) ? floatingVideoWall.floatingActive : false;
+
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label("🎬 Video Wall: 24-Shard Raum-Schwebung (Fragmentierung)", _headerStyle);
+            GUILayout.Label("Teilt die 16:9 Video Wall in 24 unregelmäßig geformte 3D-Polygon-Shards auf.\nDie Shards lösen sich von der Wand und schweben/trudeln dreidimensional durch den Club,\nwährend das YouTube-Video (oder VJ-Visuals) nahtlos und live auf allen Teilen weiterläuft!", _labelStyle);
+            GUILayout.Space(10);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Effekt-Status:", _labelStyle, GUILayout.Width(130));
+            if (GUILayout.Button(wallFxOn ? "✔ VIDEO WALL SCHWEBEND — ZURÜCK DOCKEN [C]" : "▶ VIDEO WALL TEILEN & RAUM-SCHWEBUNG [C]", wallFxOn ? _btnActiveStyle : _btnNormalStyle, GUILayout.Height(36)))
+            {
+                if (floatingVideoWall != null) floatingVideoWall.ToggleFloating();
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
+
+            if (floatingVideoWall != null)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Schwebe-Geschwindigkeit:", _labelStyle, GUILayout.Width(170));
+                float newSpeed = GUILayout.HorizontalSlider(floatingVideoWall.floatSpeed, 0.2f, 3.0f);
+                floatingVideoWall.floatSpeed = newSpeed;
+                GUILayout.Label($"{newSpeed:F1}x", _labelStyle, GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Raum-Ausbreitung (Spread):", _labelStyle, GUILayout.Width(170));
+                float newSpread = GUILayout.HorizontalSlider(floatingVideoWall.spreadMultiplier, 0.2f, 3.0f);
+                floatingVideoWall.spreadMultiplier = newSpread;
+                GUILayout.Label($"{newSpread:F1}x", _labelStyle, GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("3D Rotations-Taumeln:", _labelStyle, GUILayout.Width(170));
+                float newRot = GUILayout.HorizontalSlider(floatingVideoWall.rotationMultiplier, 0.0f, 2.0f);
+                floatingVideoWall.rotationMultiplier = newRot;
+                GUILayout.Label($"{newRot:F1}x", _labelStyle, GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Bass-Kick / Audio-Reaktivität:", _labelStyle, GUILayout.Width(170));
+                float newAudio = GUILayout.HorizontalSlider(floatingVideoWall.audioReactivity, 0.0f, 2.0f);
+                floatingVideoWall.audioReactivity = newAudio;
+                GUILayout.Label($"{Mathf.RoundToInt(newAudio * 100)}%", _labelStyle, GUILayout.Width(50));
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("Tipp: Du kannst diesen Effekt jederzeit auch mit der Taste [C] umschalten!", _statusStyle);
             GUILayout.EndVertical();
         }
 

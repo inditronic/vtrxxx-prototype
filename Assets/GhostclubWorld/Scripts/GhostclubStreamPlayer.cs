@@ -331,6 +331,11 @@ namespace Ghostclub
 
         void PlayDirectUrl(string directUrl)
         {
+            if (string.IsNullOrEmpty(directUrl)) return;
+            if (directUrl.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            {
+                directUrl = directUrl.Substring(7);
+            }
             _resolvedStreamUrl = directUrl;
             _videoPlayer.Stop();
             videoAudioSource.Stop();

@@ -11,6 +11,22 @@ namespace Ghostclub
     /// </summary>
     public class GhostclubVJScreen : MonoBehaviour
     {
+        private static GhostclubVJScreen _instance;
+        public static GhostclubVJScreen Instance
+        {
+            get
+            {
+                if (_instance == null) _instance = FindAnyObjectByType<GhostclubVJScreen>();
+                return _instance;
+            }
+            private set => _instance = value;
+        }
+
+        void Awake()
+        {
+            _instance = this;
+        }
+
         public Renderer targetRenderer;
         public bool screenEnabled = true;
         [Range(0f, 2f)] public float screenBrightness = 1.0f;
