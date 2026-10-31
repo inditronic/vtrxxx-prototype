@@ -15,7 +15,7 @@ namespace Ghostclub.Editor
             // 1. Build Scene
             GhostclubSceneBuilder.BuildScene();
 
-            string appName = "Ghostclub_5_0.app";
+            string appName = "VTRxxx_Prototype.app";
             string desktopPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Desktop), appName);
             string projectBuildDir = Path.Combine(Application.dataPath, "..", "Builds", "macOS");
             if (!Directory.Exists(projectBuildDir)) Directory.CreateDirectory(projectBuildDir);
@@ -27,17 +27,17 @@ namespace Ghostclub.Editor
                 try
                 {
                     Directory.Delete(desktopPath, true);
-                    Debug.Log($"[Ghostclub] Deleted old build at: {desktopPath}");
+                    Debug.Log($"[VTRxxx] Deleted old build at: {desktopPath}");
                 }
                 catch (System.Exception ex)
                 {
-                    Debug.LogWarning($"[Ghostclub] Cleanup notice: {ex.Message}");
+                    Debug.LogWarning($"[VTRxxx] Cleanup notice: {ex.Message}");
                 }
             }
 
             // 3. Set Player Settings
-            PlayerSettings.productName = "Ghostclub 5.0";
-            PlayerSettings.companyName = "GHOSTCLUB";
+            PlayerSettings.productName = "VTRxxx Prototype";
+            PlayerSettings.companyName = "VTRxxx";
 
             string[] scenes = new string[]
             {

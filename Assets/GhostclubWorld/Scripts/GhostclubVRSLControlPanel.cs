@@ -187,7 +187,7 @@ namespace Ghostclub
                 string lsState = (lightingSystem != null && lightingSystem.lasersEnabled && !lightingSystem.blackoutAll) ? "AN" : "AUS";
                 string wnState = (wallNeonSystem != null && wallNeonSystem.neonEnabled && (lightingSystem == null || !lightingSystem.blackoutAll)) ? "AN" : "AUS";
                 string vdState = (videoMoodLighting != null && videoMoodLighting.videoMoodEnabled && (lightingSystem == null || !lightingSystem.blackoutAll)) ? "AN" : "AUS";
-                GUI.Label(new Rect(20, Screen.height - 35, 920, 25), $"[TAB]/[L]: PANEL | [M] Movers: {mhState} | [K] Laser: {lsState} | [N] Wandlicht: {wnState} | [V] Video-Licht: {vdState} | [B] Blackout");
+                GUI.Label(new Rect(20, Screen.height - 35, 960, 25), $"[TAB]/[L]: PANEL | [M] Movers: {mhState} | [K] Laser: {lsState} | [N] Wandlicht: {wnState} | [V] Video-Licht: {vdState} | [B] Blackout | VTRxxx Prototype");
                 GUI.color = Color.white;
                 return;
             }
@@ -199,7 +199,7 @@ namespace Ghostclub
             float x = (Screen.width - width) / 2f;
             float y = (Screen.height - height) / 2f;
 
-            GUI.Window(999, new Rect(x, y, width, height), DrawPanelWindow, "GHOSTCLUB 5.0 (80-AVATAR VRCHAT) — VRSL DMX & VIDEO CONTROL", _windowStyle);
+            GUI.Window(999, new Rect(x, y, width, height), DrawPanelWindow, "VTRXXX PROTOTYPE (80-AVATAR VRCHAT) — VRSL DMX & VIDEO CONTROL", _windowStyle);
         }
 
         void DrawPanelWindow(int windowID)
@@ -226,7 +226,7 @@ namespace Ghostclub
             GUILayout.FlexibleSpace();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Ghostclub VRSL v7.0 • Separate Movers & Laser • Non-Emissive Lit Posters • True Pitch-Black Off", _labelStyle);
+            GUILayout.Label("VTRxxx Prototype VRSL • 80-Avatar VRChat • Reflective Floor • Video-Mood", _labelStyle);
             if (GUILayout.Button("SCHLIESSEN [TAB]", _btnNormalStyle, GUILayout.Width(130), GUILayout.Height(24)))
             {
                 TogglePanel();
